@@ -1,0 +1,1402 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>AI Studio Pro - Premium AI Image Generator</title>
+    
+    <script src="https://www.gstatic.com/firebasejs/9.6.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.0/firebase-database-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.0/firebase-storage-compat.js"></script>
+    
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', 'Poppins', -apple-system, BlinkMacSystemFont, sans-serif;
+        }
+
+        body {
+            background: linear-gradient(135deg, #0f0c29, #302b63, #24243e);
+            min-height: 100vh;
+            color: white;
+            overflow-x: hidden;
+        }
+
+        @media (max-width: 600px) {
+            .container { padding: 15px !important; }
+            .feature-grid { gap: 10px !important; }
+            .feature-btn { padding: 12px 8px !important; }
+            .feature-icon { font-size: 28px !important; }
+        }
+
+        /* Loading Screen */
+        .loading-screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(135deg, #0f0c29, #302b63, #24243e);
+            z-index: 10000;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+            transition: opacity 0.5s ease;
+        }
+        .loading-screen.hide {
+            opacity: 0;
+            visibility: hidden;
+        }
+        .loading-logo {
+            font-size: 70px;
+            animation: loadingFloat 1s ease infinite;
+        }
+        .loading-text {
+            margin-top: 20px;
+            font-size: 24px;
+            font-weight: bold;
+            background: linear-gradient(135deg, #FF6B6B, #4ECDC4);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+        }
+        .loading-bar {
+            width: 200px;
+            height: 4px;
+            background: rgba(255,255,255,0.2);
+            border-radius: 4px;
+            margin-top: 20px;
+            overflow: hidden;
+        }
+        .loading-progress {
+            width: 0%;
+            height: 100%;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            animation: loadingProgress 2s ease forwards;
+        }
+        @keyframes loadingFloat {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-15px); }
+        }
+        @keyframes loadingProgress {
+            0% { width: 0%; }
+            100% { width: 100%; }
+        }
+
+        /* Navbar */
+        .navbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 20px;
+            background: rgba(0, 0, 0, 0.4);
+            backdrop-filter: blur(20px);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+        .logo {
+            font-size: 20px;
+            font-weight: bold;
+            background: linear-gradient(135deg, #FF6B6B, #4ECDC4);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+        }
+        .nav-icons {
+            display: flex;
+            gap: 18px;
+            align-items: center;
+        }
+        .notification-icon, .menu-icon {
+            font-size: 22px;
+            cursor: pointer;
+        }
+
+        .container {
+            max-width: 550px;
+            margin: 0 auto;
+            padding: 20px;
+            padding-bottom: 100px;
+        }
+
+        .welcome-card {
+            background: linear-gradient(135deg, rgba(102,126,234,0.2), rgba(118,75,162,0.2));
+            border-radius: 28px;
+            padding: 20px;
+            margin-bottom: 20px;
+            text-align: center;
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+        .welcome-title {
+            font-size: 20px;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+        .token-badge {
+            display: inline-block;
+            background: linear-gradient(135deg, #FFD700, #FFA500);
+            color: #1a1a2e;
+            padding: 6px 16px;
+            border-radius: 30px;
+            font-weight: bold;
+            margin-top: 10px;
+        }
+
+        .instructions-card {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 24px;
+            padding: 18px;
+            margin-bottom: 20px;
+        }
+        .section-header {
+            font-size: 16px;
+            font-weight: bold;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .tips-list {
+            font-size: 12px;
+            color: rgba(255,255,255,0.7);
+            line-height: 1.8;
+            padding-left: 20px;
+        }
+
+        .prompts-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        .prompt-card {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 16px;
+            padding: 12px;
+            cursor: pointer;
+            transition: all 0.2s;
+            border: 1px solid rgba(255,255,255,0.05);
+        }
+        .prompt-card:hover {
+            background: rgba(255, 255, 255, 0.1);
+            transform: scale(1.02);
+        }
+        .prompt-icon {
+            font-size: 24px;
+            margin-bottom: 5px;
+        }
+        .prompt-text {
+            font-size: 11px;
+            color: rgba(255,255,255,0.8);
+        }
+
+        .inspiration-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        .inspiration-card {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            border-radius: 16px;
+            padding: 15px 8px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .inspiration-card:hover {
+            transform: scale(1.02);
+        }
+        .inspiration-emoji {
+            font-size: 30px;
+            margin-bottom: 5px;
+        }
+        .inspiration-text {
+            font-size: 10px;
+            opacity: 0.9;
+        }
+
+        .trending-card {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 24px;
+            padding: 18px;
+            margin-bottom: 20px;
+        }
+        .trending-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 12px;
+        }
+        .trending-item {
+            background: rgba(0,0,0,0.3);
+            border-radius: 16px;
+            overflow: hidden;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .trending-item:hover {
+            transform: scale(1.02);
+        }
+        .trending-img {
+            width: 100%;
+            height: 120px;
+            object-fit: cover;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+        }
+        .trending-info {
+            padding: 8px;
+        }
+        .trending-prompt {
+            font-size: 10px;
+            color: rgba(255,255,255,0.7);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .trending-user {
+            font-size: 9px;
+            color: #FFD700;
+            margin-top: 3px;
+        }
+
+        .feature-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 14px;
+            margin-bottom: 20px;
+        }
+        .feature-card {
+            background: rgba(255, 255, 255, 0.08);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            border-radius: 22px;
+            padding: 18px 12px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        .feature-card:hover {
+            transform: translateY(-3px);
+            background: rgba(255, 255, 255, 0.15);
+        }
+        .feature-icon {
+            font-size: 36px;
+            margin-bottom: 8px;
+        }
+        .feature-name {
+            font-size: 15px;
+            font-weight: 600;
+        }
+        .feature-cost {
+            font-size: 11px;
+            color: #FFD700;
+            margin-top: 5px;
+        }
+        .coming-soon {
+            opacity: 0.6;
+            position: relative;
+        }
+        .coming-badge {
+            position: absolute;
+            top: -8px;
+            right: 10px;
+            background: #ff9800;
+            font-size: 9px;
+            padding: 2px 8px;
+            border-radius: 20px;
+        }
+
+        /* Side Menu */
+        .side-menu {
+            position: fixed;
+            top: 0;
+            right: -280px;
+            width: 280px;
+            height: 100%;
+            background: linear-gradient(135deg, #1a1a2e, #16213e);
+            z-index: 1000;
+            transition: right 0.3s ease;
+            padding: 20px;
+            box-shadow: -5px 0 20px rgba(0,0,0,0.3);
+            overflow-y: auto;
+        }
+        .side-menu.open { right: 0; }
+        .menu-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding-bottom: 20px;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+            margin-bottom: 20px;
+        }
+        .menu-close { font-size: 28px; cursor: pointer; }
+        .menu-profile { text-align: center; margin-bottom: 20px; }
+        .menu-avatar {
+            width: 70px;
+            height: 70px;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 32px;
+            margin: 0 auto 10px;
+        }
+        .menu-item {
+            padding: 14px;
+            margin: 5px 0;
+            border-radius: 14px;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        .menu-item:hover { background: rgba(255,255,255,0.1); }
+        .subscription-info {
+            background: rgba(255,255,255,0.05);
+            border-radius: 16px;
+            padding: 15px;
+            margin: 15px 0;
+        }
+        .subscription-info p { font-size: 12px; margin: 5px 0; }
+
+        /* Modals */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.95);
+            backdrop-filter: blur(15px);
+            z-index: 1100;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            animation: fadeIn 0.3s ease;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        .modal-card {
+            background: linear-gradient(135deg, #1a1a2e, #16213e);
+            border-radius: 30px;
+            padding: 25px;
+            width: 90%;
+            max-width: 400px;
+            border: 1px solid rgba(255,255,255,0.1);
+            max-height: 85vh;
+            overflow-y: auto;
+        }
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        .close-modal { font-size: 24px; cursor: pointer; }
+        .modal-card input, .modal-card textarea, .modal-card select {
+            width: 100%;
+            padding: 12px;
+            margin: 10px 0;
+            background: rgba(255,255,255,0.1);
+            border: 1px solid rgba(255,255,255,0.2);
+            border-radius: 14px;
+            color: white;
+        }
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            border: none;
+            padding: 14px;
+            border-radius: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            width: 100%;
+        }
+        .btn-secondary {
+            background: rgba(255,255,255,0.1);
+            color: white;
+            border: none;
+            padding: 12px;
+            border-radius: 14px;
+            cursor: pointer;
+            width: 100%;
+            margin-top: 10px;
+        }
+
+        /* Image Modal (Fixed Size) */
+        .image-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.95);
+            z-index: 2000;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        .image-modal-content {
+            background: linear-gradient(135deg, #1a1a2e, #16213e);
+            border-radius: 30px;
+            padding: 20px;
+            width: 90%;
+            max-width: 450px;
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+        .image-modal-img {
+            width: 100%;
+            border-radius: 20px;
+            margin-bottom: 15px;
+        }
+        .image-modal-prompt {
+            font-size: 13px;
+            color: rgba(255,255,255,0.8);
+            margin-bottom: 10px;
+            padding: 10px;
+            background: rgba(0,0,0,0.3);
+            border-radius: 12px;
+        }
+        .image-modal-user {
+            font-size: 12px;
+            color: #FFD700;
+            margin-bottom: 15px;
+        }
+        .close-image-modal {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            font-size: 30px;
+            cursor: pointer;
+            background: rgba(0,0,0,0.5);
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .result-area {
+            margin-top: 20px;
+            padding: 20px;
+            background: rgba(0,0,0,0.3);
+            border-radius: 20px;
+            text-align: center;
+        }
+        .result-image {
+            max-width: 100%;
+            border-radius: 16px;
+            position: relative;
+        }
+        .image-container {
+            position: relative;
+            display: inline-block;
+        }
+        .watermark {
+            position: absolute;
+            bottom: 10px;
+            right: 10px;
+            background: rgba(0,0,0,0.6);
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 10px;
+            color: rgba(255,255,255,0.8);
+            font-weight: bold;
+        }
+        .loading-spinner {
+            display: inline-block;
+            width: 40px;
+            height: 40px;
+            border: 3px solid rgba(255,255,255,0.3);
+            border-top-color: #4ECDC4;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .toast {
+            position: fixed;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0,0,0,0.9);
+            color: white;
+            padding: 12px 24px;
+            border-radius: 50px;
+            z-index: 1200;
+            display: none;
+            font-size: 14px;
+        }
+        
+        .option-btn {
+            background: rgba(255,255,255,0.1);
+            padding: 8px 16px;
+            border-radius: 25px;
+            font-size: 12px;
+            cursor: pointer;
+            border: none;
+            color: white;
+            margin: 3px;
+        }
+        .option-btn.active {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+        }
+        .options-group {
+            margin-bottom: 15px;
+        }
+        .options-group label {
+            font-size: 12px;
+            color: rgba(255,255,255,0.7);
+            display: block;
+            margin-bottom: 8px;
+        }
+
+        .plan-card {
+            background: rgba(255,255,255,0.05);
+            border-radius: 16px;
+            padding: 15px;
+            margin: 10px 0;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .plan-card:hover { background: rgba(255,255,255,0.1); }
+        .plan-price { font-size: 24px; font-weight: bold; color: #FFD700; }
+
+        .payment-method {
+            display: flex;
+            gap: 10px;
+            margin: 15px 0;
+        }
+        .method-btn {
+            flex: 1;
+            padding: 12px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 14px;
+            cursor: pointer;
+            text-align: center;
+            transition: all 0.2s;
+        }
+        .method-btn.active {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+        }
+        .method-details {
+            background: rgba(255,255,255,0.05);
+            padding: 15px;
+            border-radius: 14px;
+            margin: 15px 0;
+            text-align: left;
+        }
+    </style>
+</head>
+<body>
+
+<!-- Loading Screen -->
+<div class="loading-screen" id="loadingScreen">
+    <div class="loading-logo">✨</div>
+    <div class="loading-text">AI STUDIO PRO</div>
+    <div class="loading-bar"><div class="loading-progress"></div></div>
+</div>
+
+<!-- Side Menu -->
+<div class="side-menu" id="sideMenu">
+    <div class="menu-header">
+        <h3>Menu</h3>
+        <span class="menu-close" onclick="closeMenu()">✕</span>
+    </div>
+    <div class="menu-profile">
+        <div class="menu-avatar" id="menuAvatar">👤</div>
+        <h4 id="menuUserName">User</h4>
+        <p id="menuUserEmail" style="font-size:12px; opacity:0.7;">user@example.com</p>
+    </div>
+    <div id="subscriptionInfoBox" class="subscription-info">
+        <p><strong>📋 Subscription Details</strong></p>
+        <p id="subPlanName">Plan: Free</p>
+        <p id="subTokens">Tokens: 0</p>
+        <p id="subExpiry">Expiry: -</p>
+    </div>
+    <div class="menu-item" onclick="closeMenu(); openProfileModal();">👤 My Profile</div>
+    <div class="menu-item" onclick="closeMenu(); showSubscriptionPopup();">⭐ Buy Subscription</div>
+    <div class="menu-item" onclick="closeMenu(); showReferral();">👥 Referral Program</div>
+    <div class="menu-item" onclick="closeMenu(); showHelp();">❓ Help & Support</div>
+    <div class="menu-item" onclick="logout(); closeMenu();">🚪 Logout</div>
+</div>
+
+<!-- Main App -->
+<div id="mainApp" style="display: none;">
+    <div class="navbar">
+        <div class="logo">✨ AI STUDIO PRO</div>
+        <div class="nav-icons">
+            <div class="notification-icon" onclick="showNotifications()">🔔</div>
+            <div class="menu-icon" onclick="openMenu()">☰</div>
+        </div>
+    </div>
+
+    <div class="container">
+        <div class="welcome-card">
+            <div class="welcome-title">Welcome back, <span id="userName">User</span>!</div>
+            <div class="token-badge" id="tokenDisplay">💰 0 Tokens</div>
+        </div>
+
+        <div class="instructions-card">
+            <div class="section-header">📖 How to Use</div>
+            <div class="tips-list">
+                • Select Text to Image<br>
+                • Write a detailed prompt<br>
+                • Choose aspect ratio & style<br>
+                • Click Generate - wait 5-10 seconds<br>
+                • Download your HD image!<br>
+                • <strong>2 tokens per image</strong>
+            </div>
+        </div>
+
+        <div class="section-header">🔥 Popular Prompts</div>
+        <div class="prompts-grid">
+            <div class="prompt-card" onclick="usePrompt('A beautiful sunset over mountains, cinematic lighting, 4k, highly detailed')">
+                <div class="prompt-icon">🌅</div>
+                <div class="prompt-text">Sunset mountains</div>
+            </div>
+            <div class="prompt-card" onclick="usePrompt('A futuristic cyberpunk city at night, neon lights, rain, detailed, 8k')">
+                <div class="prompt-icon">🌃</div>
+                <div class="prompt-text">Cyberpunk city</div>
+            </div>
+            <div class="prompt-card" onclick="usePrompt('A magical forest with glowing mushrooms, fantasy art, ethereal, beautiful')">
+                <div class="prompt-icon">🌲</div>
+                <div class="prompt-text">Magical forest</div>
+            </div>
+            <div class="prompt-card" onclick="usePrompt('A cute anime girl with cat ears, studio ghibli style, vibrant colors')">
+                <div class="prompt-icon">🐱</div>
+                <div class="prompt-text">Anime character</div>
+            </div>
+            <div class="prompt-card" onclick="usePrompt('A professional portrait of a wise wizard, detailed face, magical background')">
+                <div class="prompt-icon">🧙</div>
+                <div class="prompt-text">Wizard portrait</div>
+            </div>
+            <div class="prompt-card" onclick="usePrompt('A cosmic galaxy with stars, nebula, vibrant colors, space art, 4k')">
+                <div class="prompt-icon">🌌</div>
+                <div class="prompt-text">Cosmic galaxy</div>
+            </div>
+        </div>
+
+        <div class="section-header">✨ Inspiration</div>
+        <div class="inspiration-grid">
+            <div class="inspiration-card" onclick="usePrompt('A beautiful fantasy landscape with floating islands, waterfalls, clouds, 8k, highly detailed')">
+                <div class="inspiration-emoji">🏔️</div>
+                <div class="inspiration-text">Floating Islands</div>
+            </div>
+            <div class="inspiration-card" onclick="usePrompt('A realistic portrait of a beautiful woman with blue eyes, detailed, cinematic lighting')">
+                <div class="inspiration-emoji">👩</div>
+                <div class="inspiration-text">Portrait</div>
+            </div>
+            <div class="inspiration-card" onclick="usePrompt('A futuristic city with flying cars, neon lights, blade runner style, 4k')">
+                <div class="inspiration-emoji">🏙️</div>
+                <div class="inspiration-text">Futuristic City</div>
+            </div>
+            <div class="inspiration-card" onclick="usePrompt('A cute puppy playing in grass, realistic, detailed fur, sunny day')">
+                <div class="inspiration-emoji">🐕</div>
+                <div class="inspiration-text">Cute Puppy</div>
+            </div>
+            <div class="inspiration-card" onclick="usePrompt('A mystical dragon flying over mountains, fantasy art, epic, detailed scales')">
+                <div class="inspiration-emoji">🐉</div>
+                <div class="inspiration-text">Mystical Dragon</div>
+            </div>
+            <div class="inspiration-card" onclick="usePrompt('A beautiful cherry blossom tree, spring, pink flowers, detailed, 4k')">
+                <div class="inspiration-emoji">🌸</div>
+                <div class="inspiration-text">Cherry Blossom</div>
+            </div>
+        </div>
+
+        <div class="trending-card">
+            <div class="section-header">🔥 Trending Creations</div>
+            <div class="trending-grid" id="trendingGrid">
+                <div style="text-align:center; padding:20px;">Loading trending images...</div>
+            </div>
+        </div>
+
+        <div class="section-header">🎨 AI Tools</div>
+        <div class="feature-grid">
+            <div class="feature-card" onclick="openTextToImageModal()">
+                <div class="feature-icon">🎨</div>
+                <div class="feature-name">Text to Image</div>
+                <div class="feature-cost">⚡ 2 Tokens</div>
+            </div>
+            <div class="feature-card coming-soon" onclick="showComingSoon()">
+                <div class="coming-badge">Soon</div>
+                <div class="feature-icon">✨🎨</div>
+                <div class="feature-name">Style Change</div>
+                <div class="feature-cost">⚡ 2 Tokens</div>
+            </div>
+            <div class="feature-card coming-soon" onclick="showComingSoon()">
+                <div class="coming-badge">Soon</div>
+                <div class="feature-icon">🎬</div>
+                <div class="feature-name">Text to Video</div>
+                <div class="feature-cost">⚡ 5 Tokens</div>
+            </div>
+            <div class="feature-card coming-soon" onclick="showComingSoon()">
+                <div class="coming-badge">Soon</div>
+                <div class="feature-icon">🖼️➡️🎬</div>
+                <div class="feature-name">Image to Video</div>
+                <div class="feature-cost">⚡ 5 Tokens</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+    // Firebase Config
+    const firebaseConfig = {
+        apiKey: "AIzaSyAyo6x9ar8NMt9WUsfC7C7h8rmZBk_knTE",
+        authDomain: "my-ai-model-a3ce9.firebaseapp.com",
+        databaseURL: "https://my-ai-model-a3ce9-default-rtdb.firebaseio.com",
+        projectId: "my-ai-model-a3ce9",
+        storageBucket: "my-ai-model-a3ce9.firebasestorage.app",
+        messagingSenderId: "730625322962",
+        appId: "1:730625322962:web:5adcde3ed4a4387c32e20b"
+    };
+
+    firebase.initializeApp(firebaseConfig);
+    const auth = firebase.auth();
+    const database = firebase.database();
+    const storage = firebase.storage();
+
+    let currentUser = null;
+    let userTokens = 0;
+    let isSubscribed = false;
+    let isGenerating = false;
+    let currentSubscription = null;
+
+    setTimeout(() => {
+        document.getElementById('loadingScreen').classList.add('hide');
+        setTimeout(() => {
+            document.getElementById('loadingScreen').style.display = 'none';
+        }, 500);
+    }, 2000);
+
+    auth.onAuthStateChanged((user) => {
+        if (user) {
+            currentUser = user;
+            loadUserData();
+            document.getElementById('mainApp').style.display = 'block';
+            loadTrendingImages();
+        } else {
+            showLoginModal();
+        }
+    });
+
+    function loadUserData() {
+        database.ref('users/' + currentUser.uid).once('value', (snapshot) => {
+            let data = snapshot.val();
+            if (data) {
+                userTokens = data.tokens || 10;
+                isSubscribed = data.subscribed || false;
+                currentSubscription = data.subscription || null;
+                document.getElementById('tokenDisplay').innerHTML = `💰 ${userTokens} Tokens`;
+                document.getElementById('userName').innerHTML = data.name || currentUser.email.split('@')[0];
+                document.getElementById('menuUserName').innerHTML = data.name || currentUser.email.split('@')[0];
+                document.getElementById('menuUserEmail').innerHTML = currentUser.email;
+                document.getElementById('menuAvatar').innerHTML = (data.name || currentUser.email[0]).charAt(0).toUpperCase();
+                updateSubscriptionInfo();
+            } else {
+                database.ref('users/' + currentUser.uid).set({
+                    name: currentUser.email.split('@')[0],
+                    email: currentUser.email,
+                    tokens: 10,
+                    subscribed: false,
+                    subscription: null,
+                    createdAt: new Date().toISOString()
+                });
+                userTokens = 10;
+                document.getElementById('tokenDisplay').innerHTML = `💰 10 Tokens`;
+                showToast('🎁 Welcome! You got 10 FREE tokens!');
+            }
+        });
+    }
+
+    function updateSubscriptionInfo() {
+        if (currentSubscription && currentSubscription.expiry && new Date(currentSubscription.expiry) > new Date()) {
+            isSubscribed = true;
+            document.getElementById('subPlanName').innerHTML = `Plan: ${currentSubscription.plan || 'Premium'}`;
+            document.getElementById('subTokens').innerHTML = `Tokens: ${userTokens}`;
+            document.getElementById('subExpiry').innerHTML = `Expiry: ${new Date(currentSubscription.expiry).toLocaleDateString()}`;
+        } else if (currentSubscription && currentSubscription.expiry && new Date(currentSubscription.expiry) <= new Date()) {
+            isSubscribed = false;
+            database.ref('users/' + currentUser.uid).update({ subscribed: false, subscription: null });
+            document.getElementById('subPlanName').innerHTML = `Plan: Free`;
+            document.getElementById('subTokens').innerHTML = `Tokens: ${userTokens}`;
+            document.getElementById('subExpiry').innerHTML = `Expiry: Expired`;
+        } else {
+            document.getElementById('subPlanName').innerHTML = `Plan: Free`;
+            document.getElementById('subTokens').innerHTML = `Tokens: ${userTokens}`;
+            document.getElementById('subExpiry').innerHTML = `Expiry: -`;
+        }
+    }
+
+    function loadTrendingImages() {
+        database.ref('trending').limitToLast(20).once('value', (snapshot) => {
+            const trending = [];
+            snapshot.forEach((child) => {
+                trending.unshift({ id: child.key, ...child.val() });
+            });
+            displayTrending(trending);
+        });
+    }
+
+    function displayTrending(trending) {
+        const grid = document.getElementById('trendingGrid');
+        if (!trending.length) {
+            grid.innerHTML = '<div style="text-align:center; padding:20px;">No trending images yet. Be the first to create!</div>';
+            return;
+        }
+        
+        let html = '';
+        trending.forEach(item => {
+            html += `
+                <div class="trending-item" onclick="openImageViewer('${item.imageUrl}', '${(item.prompt || '').replace(/'/g, "\\'")}', '${item.userName}')">
+                    <img src="${item.imageUrl}" class="trending-img" onerror="this.src='https://placehold.co/200x120?text=Image'">
+                    <div class="trending-info">
+                        <div class="trending-prompt">${(item.prompt || '').substring(0, 40)}...</div>
+                        <div class="trending-user">👤 ${item.userName}</div>
+                    </div>
+                </div>
+            `;
+        });
+        grid.innerHTML = html;
+    }
+
+    function openImageViewer(imageUrl, prompt, userName) {
+        const modal = document.createElement('div');
+        modal.className = 'image-modal';
+        modal.innerHTML = `
+            <div class="close-image-modal" onclick="this.parentElement.remove()">✕</div>
+            <div class="image-modal-content">
+                <img src="${imageUrl}" class="image-modal-img" onerror="this.src='https://placehold.co/400x400?text=Image+Not+Found'">
+                <div class="image-modal-prompt"><strong>📝 Prompt:</strong> ${prompt}</div>
+                <div class="image-modal-user"><strong>👤 Created by:</strong> ${userName}</div>
+                <button class="btn-secondary" onclick="window.open('${imageUrl}', '_blank')">📥 Download</button>
+                <button class="btn-secondary" style="margin-top:10px;" onclick="this.closest('.image-modal').remove()">Close</button>
+            </div>
+        `;
+        document.body.appendChild(modal);
+    }
+
+    function showLoginModal() {
+        const modal = document.createElement('div');
+        modal.className = 'modal-overlay';
+        modal.innerHTML = `
+            <div class="modal-card">
+                <h2 style="text-align:center;">✨ AI STUDIO PRO</h2>
+                <p style="text-align:center; margin:15px 0;">Create stunning AI images!</p>
+                <div id="loginForm">
+                    <input type="email" id="loginEmail" placeholder="Email">
+                    <input type="password" id="loginPassword" placeholder="Password">
+                    <button class="btn-primary" onclick="doLogin()">Login</button>
+                    <button class="btn-secondary" onclick="showSignupForm()">Create Account (10 Free Tokens)</button>
+                </div>
+                <div id="signupForm" style="display:none;">
+                    <input type="text" id="signupName" placeholder="Your Name">
+                    <input type="email" id="signupEmail" placeholder="Email">
+                    <input type="password" id="signupPassword" placeholder="Password (min 6)">
+                    <button class="btn-primary" onclick="doSignup()">Create Account</button>
+                    <button class="btn-secondary" onclick="showLoginForm()">Back to Login</button>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(modal);
+        
+        window.doLogin = () => {
+            const email = document.getElementById('loginEmail').value;
+            const pwd = document.getElementById('loginPassword').value;
+            auth.signInWithEmailAndPassword(email, pwd).then(() => modal.remove())
+                .catch(err => showToast(err.message, 'error'));
+        };
+        window.showSignupForm = () => {
+            document.getElementById('loginForm').style.display = 'none';
+            document.getElementById('signupForm').style.display = 'block';
+        };
+        window.showLoginForm = () => {
+            document.getElementById('signupForm').style.display = 'none';
+            document.getElementById('loginForm').style.display = 'block';
+        };
+        window.doSignup = () => {
+            const name = document.getElementById('signupName').value;
+            const email = document.getElementById('signupEmail').value;
+            const pwd = document.getElementById('signupPassword').value;
+            if (!name || !email || !pwd) return showToast('Fill all fields', 'error');
+            if (pwd.length < 6) return showToast('Password min 6 characters', 'error');
+            auth.createUserWithEmailAndPassword(email, pwd).then((userCredential) => {
+                database.ref('users/' + userCredential.user.uid).set({
+                    name: name, email: email, tokens: 10, subscribed: false, subscription: null, createdAt: new Date().toISOString()
+                }).then(() => modal.remove());
+            }).catch(err => showToast(err.message, 'error'));
+        };
+    }
+
+    function openMenu() {
+        document.getElementById('sideMenu').classList.add('open');
+        updateSubscriptionInfo();
+    }
+
+    function closeMenu() {
+        document.getElementById('sideMenu').classList.remove('open');
+    }
+
+    function openProfileModal() {
+        const modal = document.createElement('div');
+        modal.className = 'modal-overlay';
+        modal.innerHTML = `
+            <div class="modal-card">
+                <div class="modal-header">
+                    <h3>👤 My Profile</h3>
+                    <span class="close-modal" onclick="this.closest('.modal-overlay').remove()">✕</span>
+                </div>
+                <div style="text-align:center;">
+                    <div style="width:80px; height:80px; background:linear-gradient(135deg,#667eea,#764ba2); border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:36px; margin:0 auto 15px;">${currentUser?.email?.charAt(0).toUpperCase() || 'U'}</div>
+                    <h4>${currentUser?.email?.split('@')[0] || 'User'}</h4>
+                    <p style="font-size:12px; opacity:0.7;">${currentUser?.email || ''}</p>
+                </div>
+                <div style="background:rgba(255,255,255,0.05); border-radius:16px; padding:15px; margin:15px 0;">
+                    <div style="display:flex; justify-content:space-between; margin-bottom:10px;">
+                        <span>💰 Tokens Available</span>
+                        <span><strong>${userTokens}</strong></span>
+                    </div>
+                    <div style="display:flex; justify-content:space-between;">
+                        <span>📅 Member Since</span>
+                        <span><small>${new Date().toLocaleDateString()}</small></span>
+                    </div>
+                </div>
+                <button class="btn-secondary" onclick="logout(); this.closest('.modal-overlay').remove();">🚪 Logout</button>
+            </div>
+        `;
+        document.body.appendChild(modal);
+    }
+
+    function showNotifications() {
+        const modal = document.createElement('div');
+        modal.className = 'modal-overlay';
+        modal.innerHTML = `
+            <div class="modal-card">
+                <div class="modal-header">
+                    <h3>🔔 Notifications</h3>
+                    <span class="close-modal" onclick="this.closest('.modal-overlay').remove()">✕</span>
+                </div>
+                <div style="padding:12px 0; border-bottom:1px solid rgba(255,255,255,0.1);">
+                    <p>✨ <strong>Welcome to AI Studio Pro!</strong></p>
+                    <p style="font-size:12px;">You have 10 free tokens to start creating!</p>
+                </div>
+                <div style="padding:12px 0;">
+                    <p>🎨 <strong>Pollinations AI Integration</strong></p>
+                    <p style="font-size:12px;">Professional quality images with 5-10 second generation!</p>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(modal);
+    }
+
+    function showReferral() {
+        showToast('👥 Referral program coming soon!', 'info');
+    }
+
+    function showHelp() {
+        const modal = document.createElement('div');
+        modal.className = 'modal-overlay';
+        modal.innerHTML = `
+            <div class="modal-card">
+                <div class="modal-header">
+                    <h3>❓ Help & Support</h3>
+                    <span class="close-modal" onclick="this.closest('.modal-overlay').remove()">✕</span>
+                </div>
+                <p><strong>📖 How to use:</strong></p>
+                <p style="font-size:12px; margin:5px 0;">1. Click Text to Image</p>
+                <p style="font-size:12px; margin:5px 0;">2. Enter a detailed prompt</p>
+                <p style="font-size:12px; margin:5px 0;">3. Choose aspect ratio and style</p>
+                <p style="font-size:12px; margin:5px 0;">4. Click Generate - wait 5-10 seconds</p>
+                <p style="font-size:12px; margin:5px 0;">5. Download your HD image!</p>
+                <hr style="margin:15px 0; opacity:0.2;">
+                <p><strong>💰 Token System:</strong></p>
+                <p style="font-size:12px;">• 2 tokens per image</p>
+                <p style="font-size:12px;">• 10 free tokens on signup</p>
+                <button class="btn-secondary" style="margin-top:15px;" onclick="this.closest('.modal-overlay').remove()">Close</button>
+            </div>
+        `;
+        document.body.appendChild(modal);
+    }
+
+    function showComingSoon() {
+        showToast('🚀 Coming Soon! This feature will be available in the next update!', 'warning');
+    }
+
+    function usePrompt(prompt) {
+        openTextToImageModal();
+        setTimeout(() => {
+            const input = document.getElementById('promptInput');
+            if (input) input.value = prompt;
+        }, 200);
+    }
+
+    function logout() {
+        auth.signOut().then(() => {
+            document.getElementById('mainApp').style.display = 'none';
+            showToast('Logged out successfully');
+        });
+    }
+
+    function showToast(msg, type = 'success') {
+        const t = document.getElementById('toast');
+        t.innerHTML = msg;
+        t.style.display = 'block';
+        t.style.background = type === 'error' ? '#f44336' : type === 'warning' ? '#ff9800' : 'rgba(0,0,0,0.9)';
+        setTimeout(() => t.style.display = 'none', 3000);
+    }
+
+    // ========== FIXED: IMAGE GENERATION WITH WORKING DOWNLOAD ==========
+    const ratioDimensions = {
+        "1:1": { width: 1024, height: 1024, label: "Square 1:1" },
+        "9:16": { width: 576, height: 1024, label: "Portrait 9:16" },
+        "16:9": { width: 1024, height: 576, label: "Landscape 16:9" }
+    };
+
+    const stylePrompts = {
+        realistic: "photorealistic, ultra hd, 8k, real life, detailed texture, sharp focus, cinematic lighting",
+        anime: "anime style, vibrant colors, manga art, studio ghibli aesthetic, cel shaded, beautiful",
+        "3d": "3d render, cgi, pixar style, unreal engine 5, cinematic lighting, high quality render",
+        cyberpunk: "cyberpunk style, neon lights, futuristic city, dark atmosphere, sci-fi, detailed"
+    };
+
+    let currentRatio = "1:1";
+    let currentStyle = "realistic";
+
+    function openTextToImageModal() {
+        if (userTokens <= 0 && !isSubscribed) {
+            showSubscriptionPopup();
+            return;
+        }
+        
+        const modal = document.createElement('div');
+        modal.className = 'modal-overlay';
+        modal.innerHTML = `
+            <div class="modal-card">
+                <div class="modal-header">
+                    <h3>🎨 Text to Image</h3>
+                    <span class="close-modal" onclick="this.closest('.modal-overlay').remove()">✕</span>
+                </div>
+                <div class="options-group">
+                    <label>📐 Aspect Ratio</label>
+                    <div style="display:flex; gap:8px; flex-wrap:wrap;">
+                        <button class="option-btn" onclick="setRatio('1:1', this)">Square 1:1</button>
+                        <button class="option-btn" onclick="setRatio('9:16', this)">Portrait 9:16</button>
+                        <button class="option-btn" onclick="setRatio('16:9', this)">Landscape 16:9</button>
+                    </div>
+                </div>
+                <div class="options-group">
+                    <label>🎨 Style</label>
+                    <div style="display:flex; gap:8px; flex-wrap:wrap;">
+                        <button class="option-btn" onclick="setStyle('realistic', this)">Realistic</button>
+                        <button class="option-btn" onclick="setStyle('anime', this)">Anime</button>
+                        <button class="option-btn" onclick="setStyle('3d', this)">3D</button>
+                        <button class="option-btn" onclick="setStyle('cyberpunk', this)">Cyberpunk</button>
+                    </div>
+                </div>
+                <textarea id="promptInput" rows="3" placeholder="Describe the image you want to create..."></textarea>
+                <button class="btn-primary" onclick="generateImageFromModal()">🎨 Generate (2 Tokens)</button>
+                <div id="modalResultArea" style="margin-top:15px;"></div>
+            </div>
+        `;
+        document.body.appendChild(modal);
+        window.modalRef = modal;
+        
+        setTimeout(() => {
+            document.querySelectorAll('.option-btn').forEach(btn => {
+                if (btn.innerText.includes('1:1')) btn.classList.add('active');
+                if (btn.innerText.includes('Realistic')) btn.classList.add('active');
+            });
+        }, 100);
+    }
+
+    function setRatio(ratio, btn) {
+        currentRatio = ratio;
+        document.querySelectorAll('.option-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+    }
+
+    function setStyle(style, btn) {
+        currentStyle = style;
+        document.querySelectorAll('.option-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+    }
+
+    async function updateTokens(amount) {
+        userTokens += amount;
+        document.getElementById('tokenDisplay').innerHTML = `💰 ${userTokens} Tokens`;
+        await database.ref('users/' + currentUser.uid).update({ tokens: userTokens });
+        
+        if (userTokens <= 0 && !isSubscribed) {
+            showSubscriptionPopup();
+        }
+    }
+
+    // ===== FIXED: Download function - Working properly (from working file) =====
+    function downloadImage(url) {
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'ai-studio-image-' + Date.now() + '.png';
+        a.target = '_blank';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        showToast('✅ Download started!');
+    }
+
+    async function generateImageFromModal() {
+        const prompt = document.getElementById('promptInput')?.value;
+        if (!prompt) return showToast('Enter a prompt!', 'error');
+        
+        if (userTokens < 2 && !isSubscribed) {
+            showSubscriptionPopup();
+            if (window.modalRef) window.modalRef.remove();
+            return;
+        }
+        
+        if (isGenerating) return showToast('Please wait...', 'warning');
+        
+        isGenerating = true;
+        await updateTokens(-2);
+        
+        const resultDiv = document.getElementById('modalResultArea');
+        resultDiv.innerHTML = '<div class="loading-spinner"></div><p>🎨 Generating your image... (5-10 seconds)</p>';
+        
+        const dim = ratioDimensions[currentRatio];
+        const finalPrompt = `${prompt}, ${stylePrompts[currentStyle]}, high quality, masterpiece, 4k, detailed, beautiful`;
+        const imageUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(finalPrompt)}?width=${dim.width}&height=${dim.height}&nologo=true&enhance=true&seed=${Date.now()}`;
+        
+        try {
+            // Load image to verify it works
+            const img = new Image();
+            await new Promise((resolve, reject) => {
+                img.onload = () => resolve(img);
+                img.onerror = () => reject(new Error('Failed to load image'));
+                img.src = imageUrl;
+                setTimeout(() => reject(new Error('Timeout - Image generation took too long')), 45000);
+            });
+            
+            // Display image with working download button
+            resultDiv.innerHTML = `
+                <div class="image-container" style="position: relative; display: inline-block;">
+                    <img src="${imageUrl}" class="result-image" style="max-width:100%; border-radius:16px;">
+                    <div class="watermark">✨ AI Studio Pro</div>
+                </div>
+                <br>
+                <button class="btn-secondary" style="margin-top:12px;" onclick="downloadImage('${imageUrl}')">📥 Download Image</button>
+                <p style="font-size:11px; margin-top:8px;">Aspect: ${dim.label} | Style: ${currentStyle}</p>
+            `;
+            showToast('✨ Image generated successfully!');
+            saveToTrending(imageUrl, prompt);
+            
+        } catch(e) {
+            console.error('Error:', e);
+            resultDiv.innerHTML = `<p>❌ Error: ${e.message || 'Generation failed. Please try again with a different prompt.'}</p>`;
+            await updateTokens(2);
+        } finally {
+            isGenerating = false;
+        }
+    }
+
+    function saveToTrending(imageUrl, prompt) {
+        database.ref('trending').push({
+            imageUrl: imageUrl,
+            prompt: prompt,
+            userName: currentUser.email?.split('@')[0] || 'User',
+            userId: currentUser.uid,
+            timestamp: new Date().toISOString()
+        }).then(() => {
+            loadTrendingImages();
+        }).catch(() => {});
+    }
+
+    // ========== SUBSCRIPTION & PAYMENT SYSTEM ==========
+    function showSubscriptionPopup() {
+        const modal = document.createElement('div');
+        modal.className = 'modal-overlay';
+        modal.innerHTML = `
+            <div class="modal-card">
+                <div style="font-size:50px; text-align:center;">⭐</div>
+                <h3 style="text-align:center;">Choose Your Plan</h3>
+                <p style="text-align:center; margin:15px 0;">Get more tokens and continue creating amazing images!</p>
+                
+                <div class="plan-card" onclick="selectPlan('basic', 5, 100, 30)">
+                    <div style="display:flex; justify-content:space-between; align-items:center;">
+                        <div><h4>📱 Basic Plan</h4><p>100 tokens + 30 days validity</p></div>
+                        <div class="plan-price">$5</div>
+                    </div>
+                </div>
+                
+                <div class="plan-card" onclick="selectPlan('standard', 10, 250, 90)">
+                    <div style="display:flex; justify-content:space-between; align-items:center;">
+                        <div><h4>⭐ Standard Plan</h4><p>250 tokens + 90 days validity</p></div>
+                        <div class="plan-price">$10</div>
+                    </div>
+                </div>
+                
+                <div class="plan-card" onclick="selectPlan('premium', 20, 600, 180)">
+                    <div style="display:flex; justify-content:space-between; align-items:center;">
+                        <div><h4>👑 Premium Plan</h4><p>600 tokens + 180 days validity</p></div>
+                        <div class="plan-price">$20</div>
+                    </div>
+                </div>
+                
+                <div class="plan-card" onclick="selectPlan('yearly', 100, 1200, 365)">
+                    <div style="display:flex; justify-content:space-between; align-items:center;">
+                        <div><h4>🏆 Yearly Plan</h4><p>1200 tokens + 365 days validity</p></div>
+                        <div class="plan-price">$100</div>
+                    </div>
+                </div>
+                
+                <button class="btn-secondary" onclick="this.closest('.modal-overlay').remove()">Close</button>
+            </div>
+        `;
+        document.body.appendChild(modal);
+        
+        window.selectPlan = (plan, price, tokens, days) => {
+            modal.remove();
+            showPaymentForm(plan, price, tokens, days);
+        };
+    }
+
+    function showPaymentForm(plan, price, tokens, days) {
+        const modal = document.createElement('div');
+        modal.className = 'modal-overlay';
+        modal.innerHTML = `
+            <div class="modal-card">
+                <h3>💳 Complete Payment</h3>
+                <p style="margin:10px 0;">Plan: ${plan.toUpperCase()} - $${price}</p>
+                <p>You will get: ${tokens} tokens</p>
+                <p>Validity: ${days} days</p>
+                
+                <div class="payment-method">
+                    <div class="method-btn" data-method="easypaisa">📱 EasyPaisa</div>
+                    <div class="method-btn" data-method="jazzcash">📱 JazzCash</div>
+                    <div class="method-btn" data-method="crypto">🪙 USDT</div>
+                </div>
+                
+                <div id="methodDetails" class="method-details">
+                    Select a payment method above
+                </div>
+                
+                <input type="text" id="payerName" placeholder="Your Full Name">
+                <input type="text" id="transactionId" placeholder="Transaction ID / Reference Number">
+                <input type="number" id="paidAmount" placeholder="Amount Paid (PKR for EasyPaisa/JazzCash, USDT for Crypto)">
+                <input type="file" id="paymentScreenshot" accept="image/*">
+                
+                <button class="btn-primary" onclick="submitPaymentRequest('${plan}', ${price}, ${tokens}, ${days})">Confirm Payment</button>
+                <button class="btn-secondary" onclick="this.closest('.modal-overlay').remove()">Cancel</button>
+            </div>
+        `;
+        document.body.appendChild(modal);
+        window.paymentModal = modal;
+        
+        const details = {
+            easypaisa: "📱 EasyPaisa Account: 03XXXXXXXXX<br>Account Name: AI Studio Pro<br>Amount: PKR ${price * 280} ($${price})",
+            jazzcash: "📱 JazzCash Account: 03XXXXXXXXX<br>Account Name: AI Studio Pro<br>Amount: PKR ${price * 280} ($${price})",
+            crypto: "🪙 USDT (TRC20): TXxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx<br>Network: TRC20<br>Amount: ${price} USDT"
+        };
+        
+        document.querySelectorAll('.method-btn').forEach(btn => {
+            btn.onclick = () => {
+                document.querySelectorAll('.method-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                const method = btn.getAttribute('data-method');
+                document.getElementById('methodDetails').innerHTML = details[method];
+                window.selectedMethod = method;
+            };
+        });
+        
+        window.submitPaymentRequest = async (planName, planPrice, planTokens, planDays) => {
+            const method = window.selectedMethod;
+            const payerName = document.getElementById('payerName').value;
+            const txId = document.getElementById('transactionId').value;
+            const paidAmount = document.getElementById('paidAmount').value;
+            const file = document.getElementById('paymentScreenshot').files[0];
+            
+            if (!method) {
+                showToast('Select a payment method', 'error');
+                return;
+            }
+            if (!payerName) {
+                showToast('Enter your name', 'error');
+                return;
+            }
+            if (!txId) {
+                showToast('Enter transaction ID', 'error');
+                return;
+            }
+            if (!paidAmount) {
+                showToast('Enter amount paid', 'error');
+                return;
+            }
+            if (!file) {
+                showToast('Upload payment screenshot', 'error');
+                return;
+            }
+            
+            const storageRef = storage.ref('payment_screenshots/' + Date.now() + '_' + file.name);
+            const uploadTask = await storageRef.put(file);
+            const screenshotUrl = await uploadTask.ref.getDownloadURL();
+            
+            const expiryDate = new Date();
+            expiryDate.setDate(expiryDate.getDate() + planDays);
+            
+            database.ref('payment_requests').push({
+                userId: currentUser.uid,
+                userEmail: currentUser.email,
+                userName: payerName,
+                plan: planName,
+                amount: planPrice,
+                tokens: planTokens,
+                validityDays: planDays,
+                paymentMethod: method,
+                transactionId: txId,
+                paidAmount: paidAmount,
+                screenshotUrl: screenshotUrl,
+                status: 'pending',
+                timestamp: new Date().toISOString()
+            });
+            
+            if (window.paymentModal) window.paymentModal.remove();
+            showToast('✅ Payment request submitted! Admin will approve within 24 hours.', 'success');
+        };
+    }
+
+    // Make all functions global
+    window.openMenu = openMenu;
+    window.closeMenu = closeMenu;
+    window.openTextToImageModal = openTextToImageModal;
+    window.generateImageFromModal = generateImageFromModal;
+    window.setRatio = setRatio;
+    window.setStyle = setStyle;
+    window.downloadImage = downloadImage;
+    window.logout = logout;
+    window.showComingSoon = showComingSoon;
+    window.showNotifications = showNotifications;
+    window.openProfileModal = openProfileModal;
+    window.showSubscriptionPopup = showSubscriptionPopup;
+    window.showReferral = showReferral;
+    window.showHelp = showHelp;
+    window.usePrompt = usePrompt;
+    window.openImageViewer = openImageViewer;
+    window.selectPlan = () => {};
+</script>
+
+</body>
+</html>
